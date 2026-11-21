@@ -2,9 +2,9 @@ use clap::{Parser, Subcommand};
 use rbroadlink::{traits::DeviceTrait, Device};
 
 #[derive(Parser)]
-#[clap(about, version)]
+#[command(about, version)]
 struct Args {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     command: RunMode,
 }
 

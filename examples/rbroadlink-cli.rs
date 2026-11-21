@@ -1,15 +1,15 @@
 use std::net::Ipv4Addr;
 
-use clap::{ArgEnum, Parser, Subcommand};
-use rpassword::read_password_from_tty;
+use clap::{Parser, Subcommand, ValueEnum};
+use rpassword::prompt_password;
 
 use rbroadlink::{network::WirelessConnection, Device};
 
 /// Command line arguments for the CLI
 #[derive(Parser, Debug)]
-#[clap(about, version, author)]
+#[command(about, version, author)]
 struct Args {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     command: Commands,
 }
 
@@ -18,7 +18,7 @@ enum Commands {
     /// Blasts an IR / RF code to the world.
     Blast {
         /// Local IP of this machine. Use this if the broadlink device is on a different subnet.
-        #[clap(long, short)]
+        #[arg(long, short)]
         local_ip: Option<Ipv4Addr>,
 
         /// The IP address of the broadlink device.
@@ -31,11 +31,11 @@ enum Commands {
     /// Connect a broadlink device to the network. Only tested on the RM3 Mini and the RM4 Pro
     Connect {
         /// Prompt for the password interactively
-        #[clap(long, short)]
+        #[arg(long, short)]
         prompt: bool,
 
         /// Wireless security mode
-        #[clap(arg_enum)]
+        #[arg(value_enum)]
         security_mode: WirelessConnectionArg,
 
         /// The name of the wireless network
@@ -48,28 +48,28 @@ enum Commands {
     /// Learn a code from a broadlink device on the network
     Learn {
         /// Local IP of this machine. Use this if the broadlink device is on a different subnet.
-        #[clap(long, short)]
+        #[arg(long, short)]
         local_ip: Option<Ipv4Addr>,
 
         /// The IP address of the broadlink device.
         device_ip: Ipv4Addr,
 
         /// The type of code to learn
-        #[clap(arg_enum)]
+        #[arg(value_enum)]
         code_type: LearnCodeType,
     },
 
     /// Lists available broadlink devices on the network
     List {
         /// Local IP of this machine. Use this if the broadlink device is on a different subnet.
-        #[clap(long, short)]
+        #[arg(long, short)]
         local_ip: Option<Ipv4Addr>,
     },
 
     /// Get information about a broadlink device
     Info {
         /// Local IP of this machine. Use this if the broadlink device is on a different subnet.
-        #[clap(long, short)]
+        #[arg(long, short)]
         local_ip: Option<Ipv4Addr>,
 
         /// The IP address of the broadlink device
@@ -77,13 +77,13 @@ enum Commands {
     },
 }
 
-#[derive(ArgEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug)]
 enum LearnCodeType {
     IR,
     RF,
 }
 
-#[derive(ArgEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug)]
 enum WirelessConnectionArg {
     None,
     WEP,
@@ -144,12 +144,12 @@ fn connect(
     prompt: bool,
 ) -> Result<(), String> {
     // Enforce unwrapping the password if using a security mode that requires it.
-    let password_prompt = Some("Wireless Password (will not show): ");
+    let password_prompt = "Wireless Password (will not show): ";
     let unwrapped_pass = match sec_mode {
         WirelessConnectionArg::None => "".into(),
         _ => {
             if prompt {
-                read_password_from_tty(password_prompt).expect("Could not read password!")
+                prompt_password(password_prompt).expect("Could not read password!")
             } else {
                 password.expect("This mode requires a password!")
             }

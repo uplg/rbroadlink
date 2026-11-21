@@ -2,52 +2,50 @@ use std::{collections::HashMap, net::Ipv4Addr, time::Duration};
 
 use clap::Parser;
 use log::{info, warn};
-use mqtt_async_client::{
-    client::{Client, KeepAlive, Publish, QoS, Subscribe, SubscribeTopic},
-    Error,
-};
+use rumqttc::{AsyncClient, Event, MqttOptions, Packet, QoS, SubscribeReasonCode};
 use rbroadlink::{traits::DeviceTrait, Device};
 
 #[derive(Parser, Clone, Debug)]
-#[clap(about, version, author)]
+#[command(about, version, author)]
 struct Args {
     /// Add a client to track. Can be repeated.
-    #[clap(short, long, multiple_occurrences(true))]
+    #[arg(short, long)]
     client: Vec<Ipv4Addr>,
 
     /// Enable automatically discovering devices
-    #[clap(short, long)]
+    #[arg(short, long)]
     auto_discover: bool,
 
     /// Specify the local IP of this machine, if multiple interfaces are available.
-    #[clap(long)]
+    #[arg(long)]
     local_ip: Option<Ipv4Addr>,
 
     /// The MQTT username, if needed
-    #[clap(short, long)]
+    #[arg(short, long)]
     username: Option<String>,
 
     /// The MQTT password, if needed
-    #[clap(short, long)]
+    #[arg(short, long)]
     password: Option<String>,
 
     /// The MQTT ID to use for this client, if needed
-    #[clap(long, default_value = "mqtt-broadlink")]
+    #[arg(long, default_value = "mqtt-broadlink")]
     mqtt_id: String,
 
     /// The keepalive interval, in seconds.
-    #[clap(long, default_value = "30")]
+    #[arg(long, default_value = "30")]
     keep_alive: u16,
 
-    /// The operation timeout, in seconds.
-    #[clap(long, default_value = "20")]
+    /// The connection timeout, in seconds.
+    #[arg(long, default_value = "20")]
     operation_timeout: u16,
 
-    /// Automatically connect to the broker
-    #[clap(long)]
+    /// Reconnect to the broker when the connection drops, instead of giving up.
+    #[arg(long)]
     auto_connect: bool,
 
-    /// The MQTT broker used for publishing / subscribing to topics.
+    /// The MQTT broker used for publishing / subscribing to topics, as a URL
+    /// (`mqtt://host[:port]`, `tcp://`, `mqtts://`, `ssl://`).
     mqtt_broker: String,
 }
 
@@ -92,112 +90,104 @@ async fn handle_device(device: &Device, args: Args) -> Result<(), String> {
     let mqtt_id = format!("{}-{}", args.mqtt_id.clone(), sanitized_name);
 
     // Construct the mqtt client
-    let mut builder = Client::builder();
-    builder
-        .set_url_string(&args.mqtt_broker)
-        .expect("Could not set MQTT broker URL!")
-        .set_username(args.username.clone())
-        .set_password(args.password.clone().map(|s| s.as_bytes().to_vec()))
-        .set_client_id(Some(mqtt_id))
-        .set_connect_retry_delay(Duration::from_secs(1))
-        .set_keep_alive(KeepAlive::from_secs(args.keep_alive))
-        .set_operation_timeout(Duration::from_secs(args.operation_timeout as u64))
-        .set_automatic_connect(args.auto_connect);
+    let separator = if args.mqtt_broker.contains('?') { '&' } else { '?' };
+    let mut options =
+        MqttOptions::parse_url(format!("{}{}client_id={}", args.mqtt_broker, separator, mqtt_id))
+            .expect("Could not parse the MQTT broker URL!");
+    options.set_keep_alive(Duration::from_secs(args.keep_alive.into()));
+    if let Some(username) = &args.username {
+        options.set_credentials(username, args.password.clone().unwrap_or_default());
+    }
 
-    let mut mqtt_client = builder
-        .build()
-        .expect("Could not construct the MQTT client!");
+    let (mqtt_client, mut event_loop) = AsyncClient::new(options, 10);
+    let mut network = event_loop.network_options();
+    network.set_connection_timeout(args.operation_timeout.into());
+    event_loop.set_network_options(network);
 
-    // Connect to the broker
+    // Connect to the broker: the event loop connects at its first poll
     info!("Connecting to the MQTT broker at {}", &args.mqtt_broker);
-    mqtt_client
-        .connect()
-        .await
-        .expect("Could not connect to MQTT broker!");
-
-    // Publish the device information
-    let mut msg = Publish::new(
-        get_path(&sanitized_name, &["info"]),
-        info.friendly_type.into(),
-    );
-    msg.set_qos(QoS::AtLeastOnce);
-    msg.set_retain(false);
-
-    mqtt_client
-        .publish(&msg)
-        .await
-        .expect("Could not publish to the broker!");
-
-    // Set up a listener for the commands
-    let command_subscription = Subscribe::new(vec![SubscribeTopic {
-        qos: QoS::AtLeastOnce,
-        topic_path: get_path(&sanitized_name, &["cmd"]),
-    }]);
-    mqtt_client
-        .subscribe(command_subscription)
-        .await
-        .expect("Could not subscribe to command topic!")
-        .any_failures()
-        .expect("Failures encountered when subscribing to command topic!");
 
     // Handle events indefinitely
     loop {
-        let response = mqtt_client.read_subscriptions().await;
-        match response {
-            Err(Error::Disconnected) => {
-                return Err("Device was disconnected from the broker!".into())
+        let event = match event_loop.poll().await {
+            Ok(event) => event,
+            Err(e) if args.auto_connect => {
+                warn!("Disconnected from the broker, reconnecting: {:?}", e);
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                continue;
             }
-            Ok(r) => {
-                // Consume the command
-                let data = String::from_utf8(r.payload().to_vec())
-                    .expect("Couldn't read subscription message!");
-
-                info!("Parsing message => {:?}", data);
-                let parts: Vec<&str> = data.split(" ").collect();
-                let cmd = parts.get(0);
-                let payload = parts.get(1);
-
-                // Make sure that we skip non-cmds.
-                if cmd == None || payload == None {
-                    warn!(
-                        "Skipping incomplete command for {}: {}",
-                        &sanitized_name, &data
-                    );
-                    continue;
-                }
-
-                let unwrapped_cmd = *cmd.unwrap();
-                let unwrapped_payload = *payload.unwrap();
-
-                info!(
-                    "Got command '{}' with payload => {}",
-                    unwrapped_cmd, unwrapped_payload
-                );
-                match unwrapped_cmd {
-                    "blast" => {
-                        handle_blast(&mqtt_client, &device, &sanitized_name, &unwrapped_payload)
-                            .await
-                            .expect("Could not handle blast!")
-                    }
-                    "learn" => {
-                        handle_learn(&mqtt_client, &device, &sanitized_name, &unwrapped_payload)
-                            .await
-                            .expect("Could not handle learn!")
-                    }
-                    _ => warn!(
-                        "Skipping unknown command for {}: {}",
-                        &sanitized_name, &unwrapped_cmd
-                    ),
-                }
+            Err(e) => {
+                return Err(format!("Device was disconnected from the broker! {:?}", e));
             }
-            Err(e) => warn!("Got unhandled error: {:?}", e),
+        };
+
+        let message = match event {
+            // (Re)connected: publish the device information and listen for commands
+            Event::Incoming(Packet::ConnAck(_)) => {
+                mqtt_client
+                    .publish(
+                        get_path(&sanitized_name, &["info"]),
+                        QoS::AtLeastOnce,
+                        false,
+                        info.friendly_type.clone(),
+                    )
+                    .await
+                    .expect("Could not publish to the broker!");
+
+                mqtt_client
+                    .subscribe(get_path(&sanitized_name, &["cmd"]), QoS::AtLeastOnce)
+                    .await
+                    .expect("Could not subscribe to command topic!");
+                continue;
+            }
+            Event::Incoming(Packet::SubAck(ack)) => {
+                if ack
+                    .return_codes
+                    .iter()
+                    .any(|code| matches!(code, SubscribeReasonCode::Failure))
+                {
+                    return Err("Failures encountered when subscribing to command topic!".into());
+                }
+                continue;
+            }
+            Event::Incoming(Packet::Publish(message)) => message,
+            _ => continue,
+        };
+
+        // Consume the command
+        let data = String::from_utf8(message.payload.to_vec())
+            .expect("Couldn't read subscription message!");
+
+        info!("Parsing message => {:?}", data);
+        let parts: Vec<&str> = data.split(" ").collect();
+        let (Some(cmd), Some(payload)) = (parts.first(), parts.get(1)) else {
+            // Make sure that we skip non-cmds.
+            warn!(
+                "Skipping incomplete command for {}: {}",
+                &sanitized_name, &data
+            );
+            continue;
+        };
+
+        info!("Got command '{}' with payload => {}", cmd, payload);
+        match *cmd {
+            "blast" => handle_blast(&mqtt_client, device, &sanitized_name, payload)
+                .await
+                .expect("Could not handle blast!"),
+            "learn" => handle_learn(&mqtt_client, device, &sanitized_name, payload)
+                .await
+                .expect("Could not handle learn!"),
+            _ => warn!(
+                "Skipping unknown command for {}: {}",
+                &sanitized_name, &cmd
+            ),
         }
     }
 }
 
 /// Handles a blast command
 async fn handle_blast(
-    client: &Client,
+    client: &AsyncClient,
     device: &Device,
     sanitized_name: &str,
     payload: &str,
@@ -215,12 +205,13 @@ async fn handle_blast(
     match device {
         Device::Remote { remote } => match remote.send_code(&hex) {
             Err(e) => {
-                let err_msg = Publish::new(
-                    get_path(&sanitized_name, &["blast_error"]),
-                    e.to_string().into(),
-                );
                 client
-                    .publish(&err_msg)
+                    .publish(
+                        get_path(sanitized_name, &["blast_error"]),
+                        QoS::AtMostOnce,
+                        false,
+                        e.to_string(),
+                    )
                     .await
                     .expect("Could not publish blast error!");
 
@@ -235,9 +226,13 @@ async fn handle_blast(
     };
 
     // Tell the MQTT broker that we successfully blasted
-    let ok_msg = Publish::new(get_path(&sanitized_name, &["blast_status"]), "ok".into());
     client
-        .publish(&ok_msg)
+        .publish(
+            get_path(sanitized_name, &["blast_status"]),
+            QoS::AtMostOnce,
+            false,
+            "ok",
+        )
         .await
         .expect("Could not publish blast status!");
 
@@ -246,7 +241,7 @@ async fn handle_blast(
 
 /// Handles a learn command
 async fn handle_learn(
-    client: &Client,
+    client: &AsyncClient,
     device: &Device,
     sanitized_name: &str,
     payload: &str,
@@ -273,12 +268,13 @@ async fn handle_learn(
     // Short out if no code was learned.
     if let Err(e) = code {
         warn!("Device did not find any code! {:?}", e);
-        let err_msg = Publish::new(
-            get_path(sanitized_name, &["code_error"]),
-            e.to_string().into(),
-        );
         client
-            .publish(&err_msg)
+            .publish(
+                get_path(sanitized_name, &["code_error"]),
+                QoS::AtMostOnce,
+                false,
+                e.to_string(),
+            )
             .await
             .expect("Could not publish code error message!");
 
@@ -289,9 +285,13 @@ async fn handle_learn(
     let hex_code = hex::encode(code.unwrap());
 
     // Publish the learned code
-    let code_msg = Publish::new(get_path(sanitized_name, &["code"]), hex_code.into());
     client
-        .publish(&code_msg)
+        .publish(
+            get_path(sanitized_name, &["code"]),
+            QoS::AtMostOnce,
+            false,
+            hex_code,
+        )
         .await
         .expect("Could not send learned code!");
 
