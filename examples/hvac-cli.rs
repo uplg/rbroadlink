@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use rbroadlink::{traits::DeviceTrait, Device};
+use rbroadlink::{Device, traits::DeviceTrait};
 
 #[derive(Parser)]
 #[command(about, version)]

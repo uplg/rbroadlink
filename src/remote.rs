@@ -3,9 +3,8 @@ use std::{net::Ipv4Addr, time::Duration};
 use phf::phf_map;
 
 use crate::{
-    constants,
-    network::{util::reverse_mac, DiscoveryResponse, RemoteDataCommand, RemoteDataMessage},
-    Device, DeviceInfo,
+    Device, DeviceInfo, constants,
+    network::{DiscoveryResponse, RemoteDataCommand, RemoteDataMessage, util::reverse_mac},
 };
 
 /// A mapping of remote device codes to their friendly model equivalent.

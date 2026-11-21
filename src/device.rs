@@ -7,13 +7,13 @@ use std::{
 use packed_struct::prelude::{PackedStruct, PackedStructSlice};
 
 use crate::{
+    DeviceInfo, HVAC_CODES, HvacDevice, REMOTE_CODES, RemoteDevice,
     network::{
-        util::{local_ip_or, send_and_receive_many, send_and_receive_one},
         AuthenticationMessage, AuthenticationResponse, CommandMessage, DiscoveryMessage,
         DiscoveryResponse, WirelessConnection, WirelessConnectionMessage,
+        util::{local_ip_or, send_and_receive_many, send_and_receive_one},
     },
     traits::{CommandTrait, DeviceTrait},
-    DeviceInfo, HvacDevice, RemoteDevice, HVAC_CODES, REMOTE_CODES,
 };
 
 /// A generic broadlink device.
@@ -228,7 +228,7 @@ fn create_device_from_packet(
             return Err(format!(
                 "Unknown device: {} ({:#06X})",
                 response.model_code, response.model_code
-            ))
+            ));
         }
     };
 

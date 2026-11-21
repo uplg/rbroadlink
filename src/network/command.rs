@@ -1,7 +1,7 @@
 use aes::Aes128;
 use cbc::cipher::{
-    block_padding::{NoPadding, ZeroPadding},
     BlockModeDecrypt, BlockModeEncrypt, KeyIvInit,
+    block_padding::{NoPadding, ZeroPadding},
 };
 use packed_struct::prelude::{PackedStruct, PackedStructSlice};
 

@@ -1,7 +1,7 @@
 [package]
 name = "rbroadlink"
 version = "0.4.2"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "A library to control broadlink smart devices."
 homepage = "https://github.com/nicholascioli/rbroadlink"

@@ -4,12 +4,11 @@ use packed_struct::PackedStructSlice;
 use phf::phf_map;
 
 use crate::{
-    constants,
+    Device, DeviceInfo, constants,
     network::{
-        util::reverse_mac, AirCondInfo, AirCondState, DiscoveryResponse, HvacDataCommand,
-        HvacDataMessage,
+        AirCondInfo, AirCondState, DiscoveryResponse, HvacDataCommand, HvacDataMessage,
+        util::reverse_mac,
     },
-    Device, DeviceInfo,
 };
 
 /// A mapping of hvac device codes to their friendly model equivalent.

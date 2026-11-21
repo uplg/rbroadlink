@@ -2,8 +2,8 @@ use std::{collections::HashMap, net::Ipv4Addr, time::Duration};
 
 use clap::Parser;
 use log::{info, warn};
+use rbroadlink::{Device, traits::DeviceTrait};
 use rumqttc::{AsyncClient, Event, MqttOptions, Packet, QoS, SubscribeReasonCode};
-use rbroadlink::{traits::DeviceTrait, Device};
 
 #[derive(Parser, Clone, Debug)]
 #[command(about, version, author)]
@@ -90,10 +90,16 @@ async fn handle_device(device: &Device, args: Args) -> Result<(), String> {
     let mqtt_id = format!("{}-{}", args.mqtt_id.clone(), sanitized_name);
 
     // Construct the mqtt client
-    let separator = if args.mqtt_broker.contains('?') { '&' } else { '?' };
-    let mut options =
-        MqttOptions::parse_url(format!("{}{}client_id={}", args.mqtt_broker, separator, mqtt_id))
-            .expect("Could not parse the MQTT broker URL!");
+    let separator = if args.mqtt_broker.contains('?') {
+        '&'
+    } else {
+        '?'
+    };
+    let mut options = MqttOptions::parse_url(format!(
+        "{}{}client_id={}",
+        args.mqtt_broker, separator, mqtt_id
+    ))
+    .expect("Could not parse the MQTT broker URL!");
     options.set_keep_alive(Duration::from_secs(args.keep_alive.into()));
     if let Some(username) = &args.username {
         options.set_credentials(username, args.password.clone().unwrap_or_default());
@@ -177,10 +183,7 @@ async fn handle_device(device: &Device, args: Args) -> Result<(), String> {
             "learn" => handle_learn(&mqtt_client, device, &sanitized_name, payload)
                 .await
                 .expect("Could not handle learn!"),
-            _ => warn!(
-                "Skipping unknown command for {}: {}",
-                &sanitized_name, &cmd
-            ),
+            _ => warn!("Skipping unknown command for {}: {}", &sanitized_name, &cmd),
         }
     }
 }

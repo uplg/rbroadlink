@@ -3,7 +3,7 @@ use std::net::Ipv4Addr;
 use clap::{Parser, Subcommand, ValueEnum};
 use rpassword::prompt_password;
 
-use rbroadlink::{network::WirelessConnection, Device};
+use rbroadlink::{Device, network::WirelessConnection};
 
 /// Command line arguments for the CLI
 #[derive(Parser, Debug)]

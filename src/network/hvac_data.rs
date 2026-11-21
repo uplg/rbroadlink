@@ -1,5 +1,5 @@
 use packed_struct::prelude::{
-    packed_bits, Integer, PackedStruct, PackedStructSlice, PrimitiveEnum_u8,
+    Integer, PackedStruct, PackedStructSlice, PrimitiveEnum_u8, packed_bits,
 };
 
 use crate::{network::util::compute_generic_checksum, traits::CommandTrait};

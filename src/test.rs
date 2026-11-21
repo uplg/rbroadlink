@@ -4,9 +4,9 @@ mod tests {
 
     use hex_literal::hex;
     use jiff::{
+        ZonedDateTime,
         civil::datetime,
         tz::{Offset, TimeZone},
-        ZonedDateTime,
     };
     use packed_struct::prelude::PackedStruct;
 
@@ -343,25 +343,65 @@ mod layouts {
 
     #[test]
     fn packed_layouts_are_unchanged() {
-        layout!(CommandMessage, 56, "CommandMessage { magic_header: [91, 248, 149, 50, 207, 108, 9, 166], device_type: 3183, packet_type: 18089, count: 32995, mac_reversed: [29, 186, 87, 244, 145, 46], id: 2718263499, checksum: 39163, payload_checksum: 56383 }", "5bf89532cf6c09a6000000000000000000000000000000000000000000000000fb9800006f0ca946e3801dba57f4912ecb6805a23fdc0000");
-        layout!(DiscoveryMessage, 48, "DiscoveryMessage { gmt_offset: 444457027, year: 21687, minute: 241, hour: 142, year_without_century: 43, day_of_the_week: 200, day_of_the_month: 101, month: 2, local_ip_reversed: [19, 176, 77, 234], local_port: 9351, checksum: 39163, magic_constant: 169 }", "000000000000000043e07d1ab754f18e2bc865020000000013b04dea87240000fb9800000000a9000000000000000000");
-        layout!(DiscoveryResponse, 128, "DiscoveryResponse { model_code: 56383, mac: [237, 138, 39, 196, 97, 254], name: [155, 56, 213, 114, 15, 172, 73, 230, 131, 32, 189, 90, 247, 148, 49, 206, 107, 8, 165, 66, 223, 124, 25, 182, 83, 240, 141, 42, 199, 100, 1, 158, 59, 216, 117, 18, 175, 76, 233, 134, 35, 192, 93, 250, 151, 52, 209, 110, 11, 168, 69, 226, 127, 28, 185, 86, 243, 144, 45, 202, 103, 4], is_locked: true }", "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003fdc00000000ed8a27c461fe9b38d5720fac49e68320bd5af79431ce6b08a542df7c19b653f08d2ac764019e3bd87512af4ce98623c05dfa9734d16e0ba845e27f1cb956f3902dca67040001");
-        layout!(AuthenticationMessage, 80, "AuthenticationMessage { id: [207, 108, 9, 166, 67, 224, 125, 26, 183, 84, 241, 142, 43, 200, 101, 2], magic0: 193, magic1: 244, name: [203, 104, 5, 162, 63, 220, 121, 22, 179, 80, 237, 138, 39, 196, 97, 254, 155, 56, 213, 114, 15, 172, 73, 230, 131, 32, 189, 90, 247, 148, 49, 206] }", "00000000cf6c09a643e07d1ab754f18e2bc8650200000000000000000000c10000000000000000000000000000f40000cb6805a23fdc7916b350ed8a27c461fe9b38d5720fac49e68320bd5af79431ce");
-        layout!(AuthenticationResponse, 20, "AuthenticationResponse { id: 848689243, key: [207, 108, 9, 166, 67, 224, 125, 26, 183, 84, 241, 142, 43, 200, 101, 2] }", "5bf89532cf6c09a643e07d1ab754f18e2bc86502");
+        layout!(
+            CommandMessage,
+            56,
+            "CommandMessage { magic_header: [91, 248, 149, 50, 207, 108, 9, 166], device_type: 3183, packet_type: 18089, count: 32995, mac_reversed: [29, 186, 87, 244, 145, 46], id: 2718263499, checksum: 39163, payload_checksum: 56383 }",
+            "5bf89532cf6c09a6000000000000000000000000000000000000000000000000fb9800006f0ca946e3801dba57f4912ecb6805a23fdc0000"
+        );
+        layout!(
+            DiscoveryMessage,
+            48,
+            "DiscoveryMessage { gmt_offset: 444457027, year: 21687, minute: 241, hour: 142, year_without_century: 43, day_of_the_week: 200, day_of_the_month: 101, month: 2, local_ip_reversed: [19, 176, 77, 234], local_port: 9351, checksum: 39163, magic_constant: 169 }",
+            "000000000000000043e07d1ab754f18e2bc865020000000013b04dea87240000fb9800000000a9000000000000000000"
+        );
+        layout!(
+            DiscoveryResponse,
+            128,
+            "DiscoveryResponse { model_code: 56383, mac: [237, 138, 39, 196, 97, 254], name: [155, 56, 213, 114, 15, 172, 73, 230, 131, 32, 189, 90, 247, 148, 49, 206, 107, 8, 165, 66, 223, 124, 25, 182, 83, 240, 141, 42, 199, 100, 1, 158, 59, 216, 117, 18, 175, 76, 233, 134, 35, 192, 93, 250, 151, 52, 209, 110, 11, 168, 69, 226, 127, 28, 185, 86, 243, 144, 45, 202, 103, 4], is_locked: true }",
+            "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003fdc00000000ed8a27c461fe9b38d5720fac49e68320bd5af79431ce6b08a542df7c19b653f08d2ac764019e3bd87512af4ce98623c05dfa9734d16e0ba845e27f1cb956f3902dca67040001"
+        );
+        layout!(
+            AuthenticationMessage,
+            80,
+            "AuthenticationMessage { id: [207, 108, 9, 166, 67, 224, 125, 26, 183, 84, 241, 142, 43, 200, 101, 2], magic0: 193, magic1: 244, name: [203, 104, 5, 162, 63, 220, 121, 22, 179, 80, 237, 138, 39, 196, 97, 254, 155, 56, 213, 114, 15, 172, 73, 230, 131, 32, 189, 90, 247, 148, 49, 206] }",
+            "00000000cf6c09a643e07d1ab754f18e2bc8650200000000000000000000c10000000000000000000000000000f40000cb6805a23fdc7916b350ed8a27c461fe9b38d5720fac49e68320bd5af79431ce"
+        );
+        layout!(
+            AuthenticationResponse,
+            20,
+            "AuthenticationResponse { id: 848689243, key: [207, 108, 9, 166, 67, 224, 125, 26, 183, 84, 241, 142, 43, 200, 101, 2] }",
+            "5bf89532cf6c09a643e07d1ab754f18e2bc86502"
+        );
         layout!(
             RemoteDataMessage,
             6,
             "RemoteDataMessage { payload_length: 63579, command: StartLearningRF }",
             "5bf81b000000"
         );
-        layout!(AirCondState, 13, "AirCondState { power: false, target_temp_int: 11, swing_v: Pos3, swing_h: RightFix, mode: Fan, magic1: 5, fanspeed: Auto, preset: Mute, sleep: true, ifeel: true, health: true, clean: false, display: true, mildew: true }", "5bc005a0028c00000200180000");
+        layout!(
+            AirCondState,
+            13,
+            "AirCondState { power: false, target_temp_int: 11, swing_v: Pos3, swing_h: RightFix, mode: Fan, magic1: 5, fanspeed: Auto, preset: Mute, sleep: true, ifeel: true, health: true, clean: false, display: true, mildew: true }",
+            "5bc005a0028c00000200180000"
+        );
         layout!(
             AirCondInfo,
             22,
             "AirCondInfo { power: false, ambient_temp_int: 12, ambient_temp_fract: 28 }",
             "00000000000c0000000000000000000000000000001c"
         );
-        layout!(HvacDataMessage, 12, "HvacDataMessage { payload_length: 63579, magic1: 12949, magic2: 27855, magic3: 42505, data_length: 57411, command: 6781 }", "5bf89532cf6c09a643e07d1a");
-        layout!(WirelessConnectionMessage, 136, "WirelessConnectionMessage { checksum: 39163, magic_constant: -87, ssid: [15, 172, 73, 230, 131, 32, 189, 90, 247, 148, 49, 206, 107, 8, 165, 66, 223, 124, 25, 182, 83, 240, 141, 42, 199, 100, 1, 158, 59, 216, 117, 18], password: [175, 76, 233, 134, 35, 192, 93, 250, 151, 52, 209, 110, 11, 168, 69, 226, 127, 28, 185, 86, 243, 144, 45, 202, 103, 4, 161, 62, 219, 120, 21, 178], ssid_length: 79, password_length: 236, security_mode: 137 }", "0000000000000000000000000000000000000000000000000000000000000000fb9800000000a900000000000000000000000000000000000000000000000000000000000fac49e68320bd5af79431ce6b08a542df7c19b653f08d2ac764019e3bd87512af4ce98623c05dfa9734d16e0ba845e27f1cb956f3902dca6704a13edb7815b24fec8900");
+        layout!(
+            HvacDataMessage,
+            12,
+            "HvacDataMessage { payload_length: 63579, magic1: 12949, magic2: 27855, magic3: 42505, data_length: 57411, command: 6781 }",
+            "5bf89532cf6c09a643e07d1a"
+        );
+        layout!(
+            WirelessConnectionMessage,
+            136,
+            "WirelessConnectionMessage { checksum: 39163, magic_constant: -87, ssid: [15, 172, 73, 230, 131, 32, 189, 90, 247, 148, 49, 206, 107, 8, 165, 66, 223, 124, 25, 182, 83, 240, 141, 42, 199, 100, 1, 158, 59, 216, 117, 18], password: [175, 76, 233, 134, 35, 192, 93, 250, 151, 52, 209, 110, 11, 168, 69, 226, 127, 28, 185, 86, 243, 144, 45, 202, 103, 4, 161, 62, 219, 120, 21, 178], ssid_length: 79, password_length: 236, security_mode: 137 }",
+            "0000000000000000000000000000000000000000000000000000000000000000fb9800000000a900000000000000000000000000000000000000000000000000000000000fac49e68320bd5af79431ce6b08a542df7c19b653f08d2ac764019e3bd87512af4ce98623c05dfa9734d16e0ba845e27f1cb956f3902dca6704a13edb7815b24fec8900"
+        );
     }
 }
