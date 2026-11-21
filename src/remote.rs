@@ -38,19 +38,19 @@ impl RemoteDevice {
             .unwrap_or(&"Unknown")
             .to_string();
 
-        return Self {
+        Self {
             info: DeviceInfo {
                 address: addr,
                 mac: reverse_mac(response.mac),
                 model_code: response.model_code,
                 friendly_type: "Remote".into(),
-                friendly_model: friendly_model,
+                friendly_model,
                 name: name.into(),
                 auth_id: 0, // This will be populated when authenticated.
                 key: constants::INITIAL_KEY,
                 is_locked: response.is_locked,
             },
-        };
+        }
     }
 
     /// Attempt to learn an IR code.
@@ -73,13 +73,13 @@ impl RemoteDevice {
             let code: Vec<u8> = self
                 .send_command(&[], RemoteDataCommand::GetCode)
                 .map_err(|e| format!("Could not check code status of device! {}", e))?;
-            if code.len() != 0 {
+            if !code.is_empty() {
                 return Ok(code);
             }
         }
 
         // If we haven't gotten anything up until now, then we failed
-        return Err("Could not learn IR code! Operation timed out.".into());
+        Err("Could not learn IR code! Operation timed out.".into())
     }
 
     /// Attempts to learn an RF code.
@@ -134,7 +134,7 @@ impl RemoteDevice {
             let code: Vec<u8> = self
                 .send_command(&[], RemoteDataCommand::GetCode)
                 .map_err(|e| format!("Could not check code status of device! {}", e))?;
-            if code.len() != 0 {
+            if !code.is_empty() {
                 return Ok(code);
             }
         }
@@ -142,7 +142,7 @@ impl RemoteDevice {
         // If we haven't gotten anything up until now, then we failed
         self.send_command(&[], RemoteDataCommand::StopRfSweep)
             .map_err(|e| format!("Could not cancel RF sweep! {}", e))?;
-        return Err("Could not learn RF code! Operation timed out.".into());
+        Err("Could not learn RF code! Operation timed out.".into())
     }
 
     /// Sends an IR/RF code to the world.
@@ -150,7 +150,7 @@ impl RemoteDevice {
         self.send_command(code, RemoteDataCommand::SendCode)
             .map_err(|e| format!("Could not send IR code to device! {}", e))?;
 
-        return Ok(());
+        Ok(())
     }
 
     /// Sends a raw command to the remote.
@@ -169,13 +169,13 @@ impl RemoteDevice {
         // Construct the data message
         let msg = RemoteDataMessage::new(command);
         let packed = msg
-            .pack_with_payload(&payload)
+            .pack_with_payload(payload)
             .map_err(|e| format!("Could not pack remote data message! {}", e))?;
 
         let response = generic_device
             .send_command::<RemoteDataMessage>(&packed)
             .map_err(|e| format!("Could not send code inside of the command! {}", e))?;
 
-        return RemoteDataMessage::unpack_with_payload(&response);
+        RemoteDataMessage::unpack_with_payload(&response)
     }
 }

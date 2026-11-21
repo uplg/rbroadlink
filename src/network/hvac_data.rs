@@ -206,14 +206,14 @@ pub struct HvacDataMessage {
 impl HvacDataMessage {
     /// Create a new HvacDataMessage.
     pub fn new(command_type: HvacDataCommand) -> HvacDataMessage {
-        return HvacDataMessage {
+        HvacDataMessage {
             payload_length: 0,
             command: (1 << 8) as u16 + ((command_type as u8) << 4 | 1) as u16,
             magic1: 0x00BBu16,
             magic2: 0x8006u16,
             magic3: 0,
             data_length: 2,
-        };
+        }
     }
 
     /// Pack the HvacDataMessage with an associated payload.
@@ -226,7 +226,7 @@ impl HvacDataMessage {
         self.payload_length = self
             .data_length
             .checked_add(10u16)
-            .ok_or_else(|| "Could not add the start buffer! Payload is too long")?;
+            .ok_or("Could not add the start buffer! Payload is too long")?;
 
         // Append the payload to the header
         let mut result = self
@@ -239,7 +239,7 @@ impl HvacDataMessage {
         let checksum = compute_generic_checksum(&result[2..]);
         result.extend(checksum.to_le_bytes().to_vec());
 
-        return Ok(result);
+        Ok(result)
     }
 
     /// Unpack a HvacDataMessage and return the associated payload.
@@ -274,12 +274,12 @@ impl HvacDataMessage {
         // returned by the device
         let data = &bytes[0x0C..0x0C + usize::from(command_header.data_length - 2)];
 
-        return Ok(data.to_vec());
+        Ok(data.to_vec())
     }
 }
 
 impl CommandTrait for HvacDataMessage {
     fn packet_type() -> u16 {
-        return 0x006A;
+        0x006A
     }
 }

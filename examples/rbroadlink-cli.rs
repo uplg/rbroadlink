@@ -86,10 +86,10 @@ enum LearnCodeType {
 #[derive(ValueEnum, Clone, Debug)]
 enum WirelessConnectionArg {
     None,
-    WEP,
-    WPA1,
-    WPA2,
-    WPA,
+    Wep,
+    Wpa1,
+    Wpa2,
+    Wpa,
 }
 
 fn main() -> Result<(), String> {
@@ -97,7 +97,7 @@ fn main() -> Result<(), String> {
     let args = Args::parse();
 
     // Run the command
-    return match args.command {
+    match args.command {
         Commands::Blast {
             local_ip,
             device_ip,
@@ -119,7 +119,7 @@ fn main() -> Result<(), String> {
             local_ip,
             device_ip,
         } => info(local_ip, device_ip),
-    };
+    }
 }
 
 fn blast(local_ip: Option<Ipv4Addr>, device_ip: Ipv4Addr, code: String) -> Result<(), String> {
@@ -134,7 +134,7 @@ fn blast(local_ip: Option<Ipv4Addr>, device_ip: Ipv4Addr, code: String) -> Resul
     };
 
     println!("Blasting IR/RF code: {:02X?}", hex_code);
-    return remote.send_code(&hex_code);
+    remote.send_code(&hex_code)
 }
 
 fn connect(
@@ -159,10 +159,10 @@ fn connect(
     // Construct the connection information
     let connection = match sec_mode {
         WirelessConnectionArg::None => WirelessConnection::None(&ssid),
-        WirelessConnectionArg::WEP => WirelessConnection::WEP(&ssid, &unwrapped_pass),
-        WirelessConnectionArg::WPA1 => WirelessConnection::WPA1(&ssid, &unwrapped_pass),
-        WirelessConnectionArg::WPA2 => WirelessConnection::WPA2(&ssid, &unwrapped_pass),
-        WirelessConnectionArg::WPA => WirelessConnection::WPA(&ssid, &unwrapped_pass),
+        WirelessConnectionArg::Wep => WirelessConnection::WEP(&ssid, &unwrapped_pass),
+        WirelessConnectionArg::Wpa1 => WirelessConnection::WPA1(&ssid, &unwrapped_pass),
+        WirelessConnectionArg::Wpa2 => WirelessConnection::WPA2(&ssid, &unwrapped_pass),
+        WirelessConnectionArg::Wpa => WirelessConnection::WPA(&ssid, &unwrapped_pass),
     };
 
     // Attempt to have the device connect
@@ -173,7 +173,7 @@ fn connect(
         connection
     );
 
-    return Ok(());
+    Ok(())
 }
 
 fn learn(
@@ -200,7 +200,7 @@ fn learn(
     let hex_string = hex::encode(&code);
     println!("Got code => {}", hex_string);
 
-    return Ok(());
+    Ok(())
 }
 
 fn list(local_ip: Option<Ipv4Addr>) -> Result<(), String> {
@@ -209,7 +209,7 @@ fn list(local_ip: Option<Ipv4Addr>) -> Result<(), String> {
     // Get the devices
     let devs = Device::list(local_ip).expect("Could not list devices!");
 
-    if devs.len() == 0 {
+    if devs.is_empty() {
         println!("No devices found.")
     } else {
         println!("Devices:");
@@ -219,7 +219,7 @@ fn list(local_ip: Option<Ipv4Addr>) -> Result<(), String> {
         }
     }
 
-    return Ok(());
+    Ok(())
 }
 
 fn info(local_ip: Option<Ipv4Addr>, device_ip: Ipv4Addr) -> Result<(), String> {
@@ -229,5 +229,5 @@ fn info(local_ip: Option<Ipv4Addr>, device_ip: Ipv4Addr) -> Result<(), String> {
     let device = Device::from_ip(device_ip, local_ip).expect("Could not connect to device!");
     println!("  {}", device);
 
-    return Ok(());
+    Ok(())
 }

@@ -2,7 +2,6 @@
 
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket},
-    slice::ChunksExact,
     time::Duration,
 };
 
@@ -17,7 +16,7 @@ pub fn checksum(data: &[u8]) -> u16 {
         sum += u32::from(d);
     }
 
-    return sum as u16;
+    sum as u16
 }
 
 /// Computes the generic checksum of a bytes array.
@@ -29,12 +28,12 @@ pub fn checksum(data: &[u8]) -> u16 {
 pub fn compute_generic_checksum(buf: &[u8]) -> u16 {
     let mut state: u32 = 0xFFFF;
 
-    let mut chunks_iter: ChunksExact<u8> = buf.chunks_exact(2);
-    while let Some(chunk) = chunks_iter.next() {
-        state += u16::from_le_bytes([chunk[0], chunk[1]]) as u32;
+    let (words, rest) = buf.as_chunks::<2>();
+    for word in words {
+        state += u16::from_le_bytes(*word) as u32;
     }
 
-    if let Some(&b) = chunks_iter.remainder().get(0) {
+    if let Some(&b) = rest.first() {
         state += u16::from_le_bytes([b, 0]) as u32;
     }
 
@@ -85,10 +84,10 @@ fn send_and_receive_impl(
         .set_read_timeout(Some(Duration::new(10, 0)))
         .map_err(|e| format!("Could not set read timeout! {}", e))?;
     socket
-        .send_to(&msg, destination_addr)
+        .send_to(msg, destination_addr)
         .map_err(|e| format!("Could not broadcast message! {}", e))?;
 
-    return Ok(socket);
+    Ok(socket)
 }
 
 /// Sends a message and returns the as many received responses as possible (within a timeout).
@@ -112,7 +111,7 @@ where
         results.push(cb(bytes_received, &recv_buffer[0..bytes_received], addr)?);
     }
 
-    return Ok(results);
+    Ok(results)
 }
 
 /// Sends a message and returns the first received response.
@@ -132,10 +131,10 @@ where
     // Transform the result
     let mut recv_buffer = [0u8; 8092];
     if let Ok((bytes_received, addr)) = socket.recv_from(&mut recv_buffer) {
-        return Ok(cb(bytes_received, &recv_buffer[0..bytes_received], addr)?);
+        return cb(bytes_received, &recv_buffer[0..bytes_received], addr);
     }
 
-    return Err("No response within timeout!".into());
+    Err("No response within timeout!".into())
 }
 
 /// Reverses a MAC address. Used to fix the backwards response from the broadlink device.
@@ -146,5 +145,5 @@ pub fn reverse_mac(mac_flipped: [u8; 6]) -> [u8; 6] {
         mac[i] = mac_flipped[6 - i - 1];
     }
 
-    return mac;
+    mac
 }

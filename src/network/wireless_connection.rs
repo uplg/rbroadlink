@@ -107,7 +107,7 @@ impl WirelessConnection<'_> {
                 )
             })?,
 
-            security_mode: security_mode,
+            security_mode,
         };
 
         // Add the checksum into the msg
@@ -117,6 +117,6 @@ impl WirelessConnection<'_> {
         );
 
         // Return the newly created message
-        return Ok(msg);
+        Ok(msg)
     }
 }

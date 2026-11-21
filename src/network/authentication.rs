@@ -47,22 +47,20 @@ impl AuthenticationMessage {
         let name_bytes = name.as_bytes();
         let name_len = name_bytes.len();
         let max = if name_len > 0x20 { 0x20 } else { name_len };
-        for i in 0..max {
-            fixed_name[i] = name_bytes[i];
-        }
+        fixed_name[..max].copy_from_slice(&name_bytes[..max]);
 
-        return AuthenticationMessage {
+        AuthenticationMessage {
             id: [0x31u8; 16],
             magic0: 0x1,
             magic1: 0x1,
 
             name: fixed_name,
-        };
+        }
     }
 }
 
 impl CommandTrait for AuthenticationMessage {
     fn packet_type() -> u16 {
-        return 0x0065;
+        0x0065
     }
 }

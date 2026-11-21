@@ -38,12 +38,10 @@ impl Device {
             .pack()
             .map_err(|e| format!("Could not pack DiscoveryMessage! {}", e))?;
 
-        return Ok(
-            send_and_receive_one(&msg, addr, Some(port), |bytes_received, bytes, addr| {
-                return create_device_from_packet(addr, bytes_received, bytes);
-            })
-            .map_err(|e| format!("Could not communicate with specified device! {}", e))?,
-        );
+        send_and_receive_one(&msg, addr, Some(port), |bytes_received, bytes, addr| {
+            create_device_from_packet(addr, bytes_received, bytes)
+        })
+        .map_err(|e| format!("Could not communicate with specified device! {}", e))
     }
 
     /// List all devices in the current network. Optionally specify the local IP if on different subnets.
@@ -63,8 +61,8 @@ impl Device {
             Ipv4Addr::BROADCAST,
             Some(port),
             |bytes_received, bytes, addr| {
-                return Ok(create_device_from_packet(addr, bytes_received, &bytes)
-                    .map_err(|e| format!("Could not create device from packet! {}", e))?);
+                create_device_from_packet(addr, bytes_received, bytes)
+                    .map_err(|e| format!("Could not create device from packet! {}", e))
             },
         )
         .map_err(|e| format!("Could not send discovery message! {}", e))?;
@@ -72,7 +70,7 @@ impl Device {
         // Remove duplicates
         // TODO
 
-        return Ok(results);
+        Ok(results)
     }
 
     /// Authenticate a device. This is needed before any commands can be sent.
@@ -99,7 +97,7 @@ impl Device {
         // Save the returned key and ID
         self.save_auth_pair(auth.id, auth.key);
 
-        return Ok(());
+        Ok(())
     }
 
     /// Connects any found device to a specified network. Requires the host machine
@@ -115,12 +113,10 @@ impl Device {
             .map_err(|e| format!("Could not pack wireless connection message! {}", e))?;
 
         // We don't know the format of the response, so we just pass here.
-        send_and_receive_one(&packed, Ipv4Addr::BROADCAST, None, |_, _, _| {
-            return Ok(());
-        })
-        .map_err(|e| format!("Could not send connection message! {}", e))?;
+        send_and_receive_one(&packed, Ipv4Addr::BROADCAST, None, |_, _, _| Ok(()))
+            .map_err(|e| format!("Could not send connection message! {}", e))?;
 
-        return Ok(msg);
+        Ok(msg)
     }
 
     /// Sends a raw command to a broadlink device.
@@ -136,13 +132,13 @@ impl Device {
 
         // Pack the message with the payload
         let packed = cmd
-            .pack_with_payload(&payload, &info.key)
+            .pack_with_payload(payload, &info.key)
             .map_err(|e| format!("Could not pack command with payload! {}", e))?;
 
         // Send the message to the device
-        return send_and_receive_one(&packed, info.address, None, |_, bytes, _| {
-            return CommandMessage::unpack_with_payload(bytes.to_vec(), &info.key);
-        });
+        send_and_receive_one(&packed, info.address, None, |_, bytes, _| {
+            CommandMessage::unpack_with_payload(bytes.to_vec(), &info.key)
+        })
     }
 }
 
@@ -150,15 +146,15 @@ impl Device {
 impl DeviceTrait for Device {
     /// Get the core information about a device.
     fn get_info(&self) -> DeviceInfo {
-        return match self {
+        match self {
             Device::Remote { remote } => remote.info.clone(),
             Device::Hvac { hvac } => hvac.info.clone(),
-        };
+        }
     }
 
     /// Save the authentication information
     fn save_auth_pair(&mut self, id: u32, key: [u8; 16]) {
-        return match self {
+        match self {
             Device::Remote { remote } => {
                 remote.info.auth_id = id;
                 remote.info.key = key;
@@ -167,7 +163,7 @@ impl DeviceTrait for Device {
                 hvac.info.auth_id = id;
                 hvac.info.key = key;
             }
-        };
+        }
     }
 }
 
@@ -209,11 +205,11 @@ fn create_device_from_packet(
         _ => return Err("Device has an IPv6 Address! This should be impossible...".into()),
     };
 
-    let response = DiscoveryResponse::unpack_from_slice(&bytes)
+    let response = DiscoveryResponse::unpack_from_slice(bytes)
         .map_err(|e| format!("Could not unpack response from device! {}", e))?;
 
     // Decode the name
-    let raw_name = response.name.clone();
+    let raw_name = response.name;
     let name = from_utf8(&raw_name).map_err(|e| format!("Could not decode device name! {}", e))?;
 
     // Create the device conditionally based on the model code.
@@ -237,5 +233,5 @@ fn create_device_from_packet(
         .authenticate()
         .map_err(|e| format!("Could not authenticate device! {}", e))?;
 
-    return Ok(device);
+    Ok(device)
 }

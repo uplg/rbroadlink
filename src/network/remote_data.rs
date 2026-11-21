@@ -45,10 +45,10 @@ pub struct RemoteDataMessage {
 impl RemoteDataMessage {
     /// Create a new RemoteDataMessage.
     pub fn new(command_type: RemoteDataCommand) -> RemoteDataMessage {
-        return RemoteDataMessage {
+        RemoteDataMessage {
             payload_length: 0,
             command: command_type,
-        };
+        }
     }
 
     /// Pack the RemoteDataMessage with an associated payload.
@@ -63,7 +63,7 @@ impl RemoteDataMessage {
         self.payload_length = self
             .payload_length
             .checked_add(4u16)
-            .ok_or_else(|| "Could not add the start buffer! Payload is too long")?;
+            .ok_or("Could not add the start buffer! Payload is too long")?;
 
         // Append the payload to the header
         let mut result = self
@@ -72,7 +72,7 @@ impl RemoteDataMessage {
             .to_vec();
         result.extend(payload);
 
-        return Ok(result);
+        Ok(result)
     }
 
     /// Unpack a RemoteDataMessage and return the associated payload.
@@ -96,12 +96,12 @@ impl RemoteDataMessage {
         let payload_length = usize::from(info.payload_length + 1);
         let payload = &bytes[0x06..payload_length];
 
-        return Ok(payload.to_vec());
+        Ok(payload.to_vec())
     }
 }
 
 impl CommandTrait for RemoteDataMessage {
     fn packet_type() -> u16 {
-        return 0x006A;
+        0x006A
     }
 }

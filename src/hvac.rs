@@ -35,19 +35,19 @@ impl HvacDevice {
             .unwrap_or(&"Unknown")
             .to_string();
 
-        return Self {
+        Self {
             info: DeviceInfo {
                 address: addr,
                 mac: reverse_mac(response.mac),
                 model_code: response.model_code,
                 friendly_type: "HVAC".into(),
-                friendly_model: friendly_model,
+                friendly_model,
                 name: name.into(),
                 auth_id: 0, // This will be populated when authenticated.
                 key: constants::INITIAL_KEY,
                 is_locked: response.is_locked,
             },
-        };
+        }
     }
 
     /// Get basic information from the air conditioner.
@@ -58,7 +58,7 @@ impl HvacDevice {
         let info = AirCondInfo::unpack_from_slice(&data)
             .map_err(|e| format!("Could not unpack command from bytes! {}", e))?;
 
-        return Ok(info);
+        Ok(info)
     }
 
     /// Get current air conditioner state into AirCondState structure.
@@ -69,7 +69,7 @@ impl HvacDevice {
         let state = AirCondState::unpack_from_slice(&data)
             .map_err(|e| format!("Could not unpack command from bytes! {}", e))?;
 
-        return Ok(state);
+        Ok(state)
     }
 
     /// Set new air conditioner state based on passed structure.
@@ -79,7 +79,7 @@ impl HvacDevice {
             .map_err(|e| format!("Could not pack message! {}", e))?;
         let response = self.send_command(&payload, HvacDataCommand::SetState)?;
 
-        return Ok(response);
+        Ok(response)
     }
 
     /// Sends a raw command to the device.
@@ -96,7 +96,7 @@ impl HvacDevice {
         // Construct the data message
         let msg = HvacDataMessage::new(command);
         let packed = msg
-            .pack_with_payload(&payload)
+            .pack_with_payload(payload)
             .map_err(|e| format!("Could not pack HVAC data message! {}", e))?;
 
         let response = generic_device
@@ -106,6 +106,6 @@ impl HvacDevice {
         // TODO: check if there is some relation between
         // msg.command and the same return field from the response
 
-        return HvacDataMessage::unpack_with_payload(&response);
+        HvacDataMessage::unpack_with_payload(&response)
     }
 }

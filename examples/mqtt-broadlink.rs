@@ -111,7 +111,7 @@ async fn handle_device(device: &Device, args: Args) -> Result<(), String> {
     event_loop.set_network_options(network);
 
     // Connect to the broker: the event loop connects at its first poll
-    info!("Connecting to the MQTT broker at {}", &args.mqtt_broker);
+    info!("Connecting to the MQTT broker at {}", args.mqtt_broker);
 
     // Handle events indefinitely
     loop {
@@ -170,7 +170,7 @@ async fn handle_device(device: &Device, args: Args) -> Result<(), String> {
             // Make sure that we skip non-cmds.
             warn!(
                 "Skipping incomplete command for {}: {}",
-                &sanitized_name, &data
+                sanitized_name, data
             );
             continue;
         };
@@ -183,7 +183,7 @@ async fn handle_device(device: &Device, args: Args) -> Result<(), String> {
             "learn" => handle_learn(&mqtt_client, device, &sanitized_name, payload)
                 .await
                 .expect("Could not handle learn!"),
-            _ => warn!("Skipping unknown command for {}: {}", &sanitized_name, &cmd),
+            _ => warn!("Skipping unknown command for {}: {}", sanitized_name, cmd),
         }
     }
 }
@@ -203,7 +203,7 @@ async fn handle_blast(
     }
 
     let hex = hex.unwrap();
-    info!("Blasting payload {:?}", &hex);
+    info!("Blasting payload {:?}", hex);
 
     match device {
         Device::Remote { remote } => match remote.send_code(&hex) {
@@ -239,7 +239,7 @@ async fn handle_blast(
         .await
         .expect("Could not publish blast status!");
 
-    return Ok(());
+    Ok(())
 }
 
 /// Handles a learn command
@@ -298,12 +298,12 @@ async fn handle_learn(
         .await
         .expect("Could not send learned code!");
 
-    return Ok(());
+    Ok(())
 }
 
 /// Returns a topic path for a given device and path structure.
 fn get_path(sanitized_name: &str, paths: &[&str]) -> String {
-    return format!("broadlink/{}/{}", sanitized_name, paths.join("/"));
+    format!("broadlink/{}/{}", sanitized_name, paths.join("/"))
 }
 
 /// Get devices through autodiscovery or manual clients
@@ -327,17 +327,17 @@ fn get_devices(args: &Args) -> Result<DeviceMap, String> {
         info!("Adding client at {}", addr);
 
         // Skip clients that we know of already
-        if result.contains_key(&addr) {
+        if result.contains_key(addr) {
             warn!("Skipping duplicate client {}", addr);
             continue;
         }
 
         let client = Device::from_ip(*addr, args.local_ip)
-            .expect(format!("Could not add client {}!", addr).as_str());
+            .unwrap_or_else(|_| panic!("Could not add client {}!", addr));
 
         info!("Client added => {}", client);
         result.insert(*addr, client);
     }
 
-    return Ok(result);
+    Ok(result)
 }

@@ -114,7 +114,7 @@ impl DiscoveryMessage {
                 .map_err(|e| format!("Could not pack DiscoveryMessage! {}", e))?,
         );
 
-        return Ok(msg);
+        Ok(msg)
     }
 }
 

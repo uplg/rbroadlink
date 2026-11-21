@@ -32,7 +32,7 @@ pub fn encrypt(payload: &[u8], key: &[u8; 16]) -> Vec<u8> {
 /// Trailing zero bytes are stripped, the first byte always kept: an all-zero plaintext
 /// comes back as a single zero. The ciphertext must be whole blocks.
 pub fn decrypt(ciphertext: &[u8], key: &[u8; 16]) -> Result<Vec<u8>, String> {
-    if ciphertext.len() % AES_BLOCK != 0 {
+    if !ciphertext.len().is_multiple_of(AES_BLOCK) {
         return Err(format!(
             "Ciphertext is not whole {}-byte blocks: {} bytes",
             AES_BLOCK,
@@ -108,16 +108,16 @@ impl CommandMessage {
     where
         T: CommandTrait,
     {
-        return CommandMessage {
+        CommandMessage {
             magic_header: [0x5A, 0xA5, 0xAA, 0x55, 0x5A, 0xA5, 0xaa, 0x55],
             device_type: device_model_code,
             packet_type: T::packet_type(),
             count: count | 0x8000,
             mac_reversed: reverse_mac(mac),
-            id: id,
+            id,
             checksum: 0,         // This will be populated later.
             payload_checksum: 0, // This will be populated later.
-        };
+        }
     }
 
     /// Create a new CommandMessage.
@@ -127,7 +127,7 @@ impl CommandMessage {
     {
         let random_count = rand::random_range(0x8000..0xFFFF);
 
-        return CommandMessage::with_count::<T>(random_count, device_model_code, mac, id);
+        CommandMessage::with_count::<T>(random_count, device_model_code, mac, id)
     }
 
     /// Pack the command message while appending the payload.
@@ -157,7 +157,7 @@ impl CommandMessage {
         let mut complete_command: Vec<u8> = completely_packed.to_vec();
         complete_command.extend(&encrypted);
 
-        return Ok(complete_command);
+        Ok(complete_command)
     }
 
     /// Unpack the command message with the associated payload.
@@ -201,6 +201,6 @@ impl CommandMessage {
             ));
         }
 
-        return Ok(decrypted);
+        Ok(decrypted)
     }
 }
