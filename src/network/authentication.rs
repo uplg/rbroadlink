@@ -8,7 +8,7 @@ use crate::traits::CommandTrait;
 pub struct AuthenticationMessage {
     /// Device representative ID.
     /// Note: We use a dummy value here, but the OEM software uses the devices IMEI.
-    #[packed_field(bytes = "0x04:0x14")]
+    #[packed_field(bytes = "0x04:0x13")]
     id: [u8; 16],
 
     /// Magic value 0 (always set to 1)
@@ -20,7 +20,7 @@ pub struct AuthenticationMessage {
     magic1: u8,
 
     /// The name of the device
-    #[packed_field(bytes = "0x30:0x50")]
+    #[packed_field(bytes = "0x30:0x4F")]
     name: [u8; 0x20],
 }
 

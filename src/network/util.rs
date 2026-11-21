@@ -48,7 +48,7 @@ pub fn compute_generic_checksum(buf: &[u8]) -> u16 {
 pub fn local_ip_or(ip: Option<Ipv4Addr>) -> Result<IpAddr, String> {
     Ok(match ip {
         Some(ip) => IpAddr::V4(ip),
-        None => get_if_addrs::get_if_addrs()
+        None => if_addrs::get_if_addrs()
             .map_err(|e| {
                 format!(
                     "Could not automatically determine machine IP address. {}",

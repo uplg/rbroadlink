@@ -4,7 +4,6 @@ use cbc::cipher::{
     BlockModeDecrypt, BlockModeEncrypt, KeyIvInit,
 };
 use packed_struct::prelude::{PackedStruct, PackedStructSlice};
-use rand::Rng;
 
 use crate::{
     constants,
@@ -126,8 +125,7 @@ impl CommandMessage {
     where
         T: CommandTrait,
     {
-        let mut r = rand::thread_rng();
-        let random_count = r.gen_range(0x8000..0xFFFF);
+        let random_count = rand::random_range(0x8000..0xFFFF);
 
         return CommandMessage::with_count::<T>(random_count, device_model_code, mac, id);
     }

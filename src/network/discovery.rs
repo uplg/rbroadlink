@@ -71,7 +71,7 @@ pub struct DiscoveryResponse {
     pub mac: [u8; 6],
 
     /// Device Name
-    #[packed_field(bytes = "64:126")]
+    #[packed_field(bytes = "64:125")]
     pub name: [u8; 62],
 
     /// Device lock status
