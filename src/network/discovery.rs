@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 
-use chrono::prelude::{DateTime, Datelike, Local, Timelike};
+use jiff::ZonedDateTime;
 use packed_struct::prelude::PackedStruct;
 
 use crate::network::util::checksum;
@@ -81,16 +81,16 @@ pub struct DiscoveryResponse {
 
 impl DiscoveryMessage {
     /// Create a new DiscoveryMessage.
+    ///
+    /// The packet carries the local time: `time`'s own fields and offset, or now in the
+    /// system's time zone (`TZ`, else `/etc/localtime`) when `None`.
     pub fn new(
         addr: IpAddr,
         port: u16,
-        time: Option<DateTime<Local>>,
+        time: Option<ZonedDateTime>,
     ) -> Result<DiscoveryMessage, String> {
         // Get the time
-        let time = match time {
-            Some(t) => t,
-            None => Local::now(),
-        };
+        let time = time.unwrap_or_else(ZonedDateTime::now);
 
         // Get the ip addr. Note: The device only supports IPv4
         let selected_ip = match addr {
@@ -103,9 +103,9 @@ impl DiscoveryMessage {
         let octets = selected_ip.octets();
         let reversed_ip: [u8; 4] = [octets[3], octets[2], octets[1], octets[0]];
 
-        // Chrono returns the information in u32, so we need to convert them here.
+        // Jiff returns the information as signed integers, so we need to convert them here.
         // These conversions should, in theory, not fail. But we check nonetheless.
-        let mut msg = construct_message(reversed_ip, port, time)
+        let mut msg = construct_message(reversed_ip, port, &time)
             .map_err(|e| format!("Could not construct DiscoveryMessage! {}", e))?;
 
         // Calculate the checksum
@@ -121,10 +121,10 @@ impl DiscoveryMessage {
 fn construct_message(
     reversed_ip: [u8; 4],
     port: u16,
-    time: DateTime<Local>,
+    time: &ZonedDateTime,
 ) -> Result<DiscoveryMessage, String> {
     Ok(DiscoveryMessage {
-        gmt_offset: time.offset().local_minus_utc(),
+        gmt_offset: time.offset().seconds(),
         year: time
             .year()
             .try_into()
@@ -140,7 +140,7 @@ fn construct_message(
         year_without_century: (time.year() % 100) as u8,
         day_of_the_week: time
             .weekday()
-            .number_from_monday()
+            .to_monday_one_offset()
             .try_into()
             .map_err(|e| format!("Day of the week is out of range. {}", e))?,
         day_of_the_month: time

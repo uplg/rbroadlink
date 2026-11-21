@@ -2,8 +2,11 @@
 mod tests {
     use std::net::{IpAddr, Ipv4Addr};
 
-    use chrono::offset::{FixedOffset, TimeZone};
-    use chrono::prelude::{DateTime, Local};
+    use jiff::{
+        civil::datetime,
+        tz::{Offset, TimeZone},
+        ZonedDateTime,
+    };
     use hex_literal::hex;
     use packed_struct::prelude::PackedStruct;
 
@@ -17,14 +20,14 @@ mod tests {
 
     /// A local time at a fixed offset (in seconds east of UTC), as discovery reads it.
     fn local_time(
-        (year, month, day): (i32, u32, u32),
-        (hour, minute, second): (u32, u32, u32),
+        (year, month, day): (i16, i8, i8),
+        (hour, minute, second): (i8, i8, i8),
         offset_seconds: i32,
-    ) -> DateTime<Local> {
-        let time = FixedOffset::east(offset_seconds)
-            .ymd(year, month, day)
-            .and_hms(hour, minute, second);
-        DateTime::<Local>::from_utc(time.naive_utc(), *time.offset())
+    ) -> ZonedDateTime {
+        let offset = Offset::from_seconds(offset_seconds).expect("Offset out of range!");
+        datetime(year, month, day, hour, minute, second, 0)
+            .to_zoned_datetime(TimeZone::fixed(offset))
+            .expect("Time out of range!")
     }
 
     /// The command header every known-answer packet below shares.
