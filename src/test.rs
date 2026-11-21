@@ -405,3 +405,35 @@ mod layouts {
         );
     }
 }
+
+/// The HVAC messages' checksum and framing, pinned.
+#[cfg(test)]
+mod hvac {
+    use crate::network::{HvacDataCommand, HvacDataMessage, util::compute_generic_checksum};
+
+    #[test]
+    fn generic_checksum_known_answers() {
+        let bytes: Vec<u8> = (0u8..=200).step_by(7).collect();
+        assert_eq!(29, bytes.len());
+
+        assert_eq!(0x0000, compute_generic_checksum(&[]));
+        assert_eq!(0x0000, compute_generic_checksum(&[0xFF; 4]));
+        // An odd length: the last byte is the low half of a zero-padded word.
+        assert_eq!(0x9E3C, compute_generic_checksum(&bytes));
+        assert_eq!(0x9F00, compute_generic_checksum(&bytes[..28]));
+    }
+
+    #[test]
+    fn hvac_data_packs_and_unpacks() {
+        let packed = HvacDataMessage::new(HvacDataCommand::SetState)
+            .pack_with_payload(&[1, 2, 3, 4, 5])
+            .expect("Could not pack!");
+        assert_eq!(
+            "1100bb00068000000700010101020304052d78",
+            hex::encode(&packed)
+        );
+
+        let payload = HvacDataMessage::unpack_with_payload(&packed).expect("Could not unpack!");
+        assert_eq!(vec![1, 2, 3, 4, 5], payload);
+    }
+}
