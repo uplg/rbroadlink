@@ -1,12 +1,11 @@
 [package]
 name = "rbroadlink"
-version = "0.4.2"
+version = "0.5.0"
 edition = "2024"
 rust-version = "1.89"
 license = "MIT"
 description = "A library to control broadlink smart devices."
-homepage = "https://github.com/nicholascioli/rbroadlink"
-repository = "https://github.com/nicholascioli/rbroadlink"
+repository = "https://github.com/uplg/rbroadlink"
 readme = "README.md"
 authors = [
     "Nicholas Cioli <nicholascioli@users.noreply.github.com>",

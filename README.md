@@ -5,6 +5,9 @@
 A rust port of the [python-broadlink](https://github.com/mjg59/python-broadlink)
 library.
 
+This is a maintained fork of [nicholascioli/rbroadlink](https://github.com/nicholascioli/rbroadlink),
+with its dependencies brought to their latest releases. See the [CHANGELOG](CHANGELOG.md).
+
 ## Devices Tested
 
 The following devices have been tested and found to work with this library:
@@ -39,10 +42,10 @@ You can also use the included cli to do so:
 
 ```sh
 # Pass the password directly
-cargo run --example rbroadlink-cli -- connect wpa2 "SSID Here" "Password here"
+cargo run --features rbroadlink-cli --example rbroadlink-cli -- connect wpa2 "SSID Here" "Password here"
 
 # Prompt for the password safely
-cargo run --example rbroadlink-cli -- connect -p wpa2 "SSID Here"
+cargo run --features rbroadlink-cli --example rbroadlink-cli -- connect -p wpa2 "SSID Here"
 ```
 
 ## Usage
@@ -137,5 +140,11 @@ hvac_device.set_state(&mut state);
 
 ## Examples
 
-There are a few examples of this library present in the `examples` folder. Refer to
-the [examples folder README](examples/README.md) for more info.
+There are a few examples of this library present in the `examples` folder, each behind the
+feature of its name:
+
+```sh
+cargo run --features rbroadlink-cli --example rbroadlink-cli -- --help
+cargo run --features mqtt-broadlink --example mqtt-broadlink -- --help
+cargo run --example hvac-cli -- --help
+```
