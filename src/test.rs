@@ -2,12 +2,12 @@
 mod tests {
     use std::net::{IpAddr, Ipv4Addr};
 
+    use hex_literal::hex;
     use jiff::{
         civil::datetime,
         tz::{Offset, TimeZone},
         ZonedDateTime,
     };
-    use hex_literal::hex;
     use packed_struct::prelude::PackedStruct;
 
     use crate::{
@@ -153,6 +153,15 @@ mod tests {
         let payload =
             CommandMessage::unpack_with_payload(packet, &SESSION_KEY).expect("Could not unpack!");
         assert_eq!(vec![0], payload);
+    }
+
+    #[test]
+    fn command_unpacks_a_header_alone_as_an_empty_payload() {
+        // Decrypting nothing used to panic in block-modes' zero unpadding.
+        let packet = known_header([0x3E, 0xCA], [0xAF, 0xBE]);
+        let payload = CommandMessage::unpack_with_payload(packet, &constants::INITIAL_KEY)
+            .expect("Could not unpack!");
+        assert!(payload.is_empty());
     }
 
     #[test]

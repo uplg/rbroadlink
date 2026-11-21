@@ -1,6 +1,8 @@
 use aes::Aes128;
-use block_modes::block_padding::ZeroPadding;
-use block_modes::{BlockMode, Cbc};
+use cbc::cipher::{
+    block_padding::{NoPadding, ZeroPadding},
+    BlockModeDecrypt, BlockModeEncrypt, KeyIvInit,
+};
 use packed_struct::prelude::{PackedStruct, PackedStructSlice};
 use rand::Rng;
 
@@ -10,8 +12,49 @@ use crate::{
     traits::CommandTrait,
 };
 
-/// Represents a block-based AES 128-bit encryption cipher.
-pub type AesCbc = Cbc<Aes128, ZeroPadding>;
+/// AES-128-CBC encryption, as Broadlink devices expect it.
+type AesCbcEncryptor = cbc::Encryptor<Aes128>;
+
+/// AES-128-CBC decryption, as Broadlink devices expect it.
+type AesCbcDecryptor = cbc::Decryptor<Aes128>;
+
+/// The AES block size, in bytes.
+const AES_BLOCK: usize = 16;
+
+/// Encrypts a payload with AES-128-CBC and the Broadlink IV, zero-padded to whole
+/// blocks (no padding block when the payload is already aligned).
+pub fn encrypt(payload: &[u8], key: &[u8; 16]) -> Vec<u8> {
+    AesCbcEncryptor::new(key.into(), &constants::INITIAL_VECTOR.into())
+        .encrypt_padded_vec::<ZeroPadding>(payload)
+}
+
+/// Decrypts an AES-128-CBC ciphertext with the Broadlink IV.
+///
+/// Trailing zero bytes are stripped, the first byte always kept: an all-zero plaintext
+/// comes back as a single zero. The ciphertext must be whole blocks.
+pub fn decrypt(ciphertext: &[u8], key: &[u8; 16]) -> Result<Vec<u8>, String> {
+    if ciphertext.len() % AES_BLOCK != 0 {
+        return Err(format!(
+            "Ciphertext is not whole {}-byte blocks: {} bytes",
+            AES_BLOCK,
+            ciphertext.len()
+        ));
+    }
+
+    let mut plaintext = AesCbcDecryptor::new(key.into(), &constants::INITIAL_VECTOR.into())
+        .decrypt_padded_vec::<NoPadding>(ciphertext)
+        .map_err(|e| format!("Could not decrypt! {}", e))?;
+
+    // Zero padding, removed as Broadlink payloads have always been read: back to the last
+    // nonzero byte, across blocks, keeping at least one byte.
+    let kept = plaintext
+        .iter()
+        .rposition(|&b| b != 0)
+        .map_or(plaintext.len().min(1), |last| last + 1);
+    plaintext.truncate(kept);
+
+    Ok(plaintext)
+}
 
 /// A message used to send commands to a broadlink device on the network.
 #[derive(PackedStruct, Clone, Debug)]
@@ -91,14 +134,11 @@ impl CommandMessage {
 
     /// Pack the command message while appending the payload.
     pub fn pack_with_payload(mut self, payload: &[u8], key: &[u8; 16]) -> Result<Vec<u8>, String> {
-        let cipher = AesCbc::new_from_slices(key, &constants::INITIAL_VECTOR)
-            .map_err(|e| format!("Could not construct cipher! {}", e))?;
-
         // Save the checksum of the payload before encrypting
-        self.payload_checksum = checksum(&payload);
+        self.payload_checksum = checksum(payload);
 
         // Encrypt the payload
-        let encrypted = cipher.encrypt_vec(&payload);
+        let encrypted = encrypt(payload, key);
 
         // Pack the command with the payload appended
         let packed = self
@@ -151,11 +191,7 @@ impl CommandMessage {
         }
 
         // Decrypt the message
-        let cipher = AesCbc::new_from_slices(key, &constants::INITIAL_VECTOR)
-            .map_err(|e| format!("Could not construct cipher! {}", e))?;
-
-        let decrypted = cipher
-            .decrypt_vec(&bytes[0x38..])
+        let decrypted = decrypt(&bytes[0x38..], key)
             .map_err(|e| format!("Could not decrypt command payload! {}", e))?;
 
         // Ensure that the payload checksums match
