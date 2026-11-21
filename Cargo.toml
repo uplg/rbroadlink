@@ -50,3 +50,7 @@ hex = { version = "0.4.3" }
 [features]
 rbroadlink-cli = ["rpassword"]
 mqtt-broadlink = ["env_logger", "log", "rumqttc", "tokio"]
+
+[lints.cargo]
+# The examples' optional dependencies are used by the examples alone, behind their features.
+unused_dependencies = "allow"
